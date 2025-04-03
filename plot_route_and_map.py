@@ -29,7 +29,7 @@ class BoundingBox:
 
 class MapPlotter:
     def __init__(self):
-        self.zoom = 14
+        self.zoom = 10 # Larger number = more detail
         self.osm_obj = osm_tile_manager.OSMTileManager()
 
     def plot_map(self, waypoints):
