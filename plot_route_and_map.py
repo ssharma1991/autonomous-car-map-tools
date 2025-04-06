@@ -1,5 +1,6 @@
 import osm_tile_manager
 import matplotlib.pyplot as plt
+from mpl_toolkits.basemap import Basemap
 import numpy as np
 from PIL import Image
 
@@ -27,6 +28,12 @@ class BoundingBox:
     def get_bottom_right(self):
         return Waypoint(self.min_lat, self.max_lon)
 
+    def get_bottom_left(self):
+        return Waypoint(self.min_lat, self.min_lon)
+
+    def get_top_right(self):
+        return Waypoint(self.max_lat, self.max_lon)
+
 class MapPlotter:
     def __init__(self):
         self.zoom = 10 # Larger number = more detail
@@ -35,11 +42,17 @@ class MapPlotter:
     def plot_map(self, waypoints):
         map = self.get_map(waypoints)
         bb = BoundingBox(waypoints)
-        tile_top_left_num = self.osm_obj.deg2tilenum(bb.get_top_left().lat, bb.get_top_left().lon, self.zoom)
-        tile_top_left_lat, tile_top_left_lon = self.osm_obj.tilenum2deg(tile_top_left_num[0], tile_top_left_num[1], self.zoom)
-        tile_bottom_right_num = self.osm_obj.deg2tilenum(bb.get_bottom_right().lat, bb.get_bottom_right().lon, self.zoom)
-        tile_bottom_right_lat, tile_bottom_right_lon = self.osm_obj.tilenum2deg(tile_bottom_right_num[0]+1, tile_bottom_right_num[1]+1, self.zoom)
-        plt.imshow(map, extent=[tile_top_left_lon, tile_bottom_right_lon, tile_bottom_right_lat, tile_top_left_lat])
+        tile_bottom_left_num = self.osm_obj.deg2tilenum(bb.get_bottom_left().lat, bb.get_bottom_left().lon, self.zoom)
+        tile_bottom_left_lat, tile_bottom_left_lon = self.osm_obj.tilenum2deg(tile_bottom_left_num[0], tile_bottom_left_num[1]+1, self.zoom)
+        tile_top_right_num = self.osm_obj.deg2tilenum(bb.get_top_right().lat, bb.get_top_right().lon, self.zoom)
+        tile_top_right_lat, tile_top_right_lon = self.osm_obj.tilenum2deg(tile_top_right_num[0]+1, tile_top_right_num[1], self.zoom)
+        plt.figure()
+        plt.title("Route and Map")
+        m = Basemap(projection='merc',llcrnrlat=tile_bottom_left_lat,urcrnrlat=tile_top_right_lat,\
+            llcrnrlon=tile_bottom_left_lon,urcrnrlon=tile_top_right_lon, ax=plt.gca(), resolution='h', area_thresh=1000)
+        m.drawcoastlines()
+        m.imshow(map, interpolation='lanczos', origin='upper')
+        return m
 
     def get_map(self, waypoints):
         bounding_box = BoundingBox(waypoints)
@@ -77,11 +90,12 @@ class RoutePlotter:
     def __init__(self):
         self.osm_obj = osm_tile_manager.OSMTileManager()
     
-    def plot_route(self, waypoints):
+    def plot_route(self, waypoints, base_map):
         route = self.generate_route(waypoints)
         lats = [wp.lat for wp in route]
         lons = [wp.lon for wp in route]
-        plt.plot(lons, lats)
+        x, y = base_map(lons, lats)
+        base_map.plot(x, y, marker='o', color='r', markersize=4, linewidth=1)
 
     def generate_route(self, waypoints):
         route = []
@@ -100,6 +114,6 @@ if __name__ == "__main__":
         Waypoint(37.4213068, -122.093090),    # near Google
         Waypoint(37.365739, -121.905370)      # near SJ airport
     ]
-    RoutePlotter().plot_route(waypoints)
-    MapPlotter().plot_map(waypoints)
+    base_map = MapPlotter().plot_map(waypoints)
+    RoutePlotter().plot_route(waypoints, base_map)
     plt.show()
