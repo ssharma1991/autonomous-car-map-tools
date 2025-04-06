@@ -7,5 +7,10 @@ Run command `python3 plot_route_and_map.py` on a terminal to launch the default 
 ![Demo](demo.png)
 
 ## TODO
-- Make the plot interactive
-- Show highway and local roads in different colors.
+- Make the plot interactive (try plotly and folium)
+- Area Analysis:
+    - Show highway and local roads in different colors. (eg- plot all highways in SF bay area)
+- Route Analysis:
+    - Create synthetic GNSS drive data on a route (inputs- vehicle speed, GNSS frequency)
+    - Visualize "nearby" highway data during the drive (implement drive timestamp slider)
+- Maybe rename repo to "autonomous-car-map-tools"
