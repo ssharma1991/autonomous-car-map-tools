@@ -4,7 +4,8 @@ from time import sleep
 import requests
 import math
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageOps
+
 
 class OSMTileManager:
     def __init__(self):
@@ -25,6 +26,14 @@ class OSMTileManager:
         with open(path, "rb") as f:
                 tile = f.read()
         tile = Image.open(BytesIO(tile))
+
+        # Add mild blue edge to each tile
+        blue_border = Image.new('RGB',(254,254),(0,0,0))
+        blue_border = ImageOps.expand(blue_border, border=1, fill=(0,0,255))
+        mask = Image.new('L',(254,254),(255))
+        mask = ImageOps.expand(mask, border=1, fill=(200))
+        tile = Image.composite(tile, blue_border, mask)
+
         return tile
     
     def download_tile(self, xtile, ytile, zoom):

@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 import numpy as np
 from PIL import Image
+import math
 
 class Waypoint:
     def __init__(self, lat, lon):
@@ -39,7 +40,23 @@ class MapPlotter:
         self.zoom = 10 # Larger number = more detail
         self.osm_obj = osm_tile_manager.OSMTileManager()
 
+    def set_zoom(self, waypoints):
+        # Select zoom 0-19 based on the bounding box of the waypoints
+        bounding_box = BoundingBox(waypoints)
+        lat_diff = bounding_box.max_lat - bounding_box.min_lat
+        lon_diff = bounding_box.max_lon - bounding_box.min_lon
+        max_diff = max(lat_diff, lon_diff)
+
+        # Ref: https://wiki.openstreetmap.org/wiki/Zoom_levels
+        self.zoom = math.ceil(math.log(360 / max_diff, 2)) + 1
+        if self.zoom < 0:
+            self.zoom = 0
+        elif self.zoom > 19:
+            self.zoom = 19
+        print("Auto zoom level set to:", self.zoom)
+
     def plot_map(self, waypoints):
+        self.set_zoom(waypoints)
         map = self.get_map(waypoints)
         bb = BoundingBox(waypoints)
         tile_bottom_left_num = self.osm_obj.deg2tilenum(bb.get_bottom_left().lat, bb.get_bottom_left().lon, self.zoom)
@@ -95,12 +112,12 @@ class RoutePlotter:
         lats = [wp.lat for wp in route]
         lons = [wp.lon for wp in route]
         x, y = base_map(lons, lats)
-        base_map.plot(x, y, marker='o', color='r', markersize=4, linewidth=1)
+        base_map.plot(x, y, marker='o', color='b', markersize=4, linewidth=1)
 
     def generate_route(self, waypoints):
         route = []
         for i in range(len(waypoints) - 1):
-            route.extend(self.generate_route_segment(waypoints[i], waypoints[i + 1])[:-1])
+            route.extend(self.generate_route_segment(waypoints[i], waypoints[i + 1])[:-1]) # skip last point
         route.append(waypoints[-1])
         return route
 
