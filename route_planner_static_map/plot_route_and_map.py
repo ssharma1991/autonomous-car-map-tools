@@ -11,17 +11,11 @@ class Waypoint:
         self.lon = lon
 
 class BoundingBox:
-    def __init__(self, min_lat, min_lon, max_lat, max_lon):
-        self.min_lat = min_lat
-        self.min_lon = min_lon
-        self.max_lat = max_lat
-        self.max_lon = max_lon
-
     def __init__(self, waypoints):
-        self.min_lat = min([wp.lat for wp in waypoints])
-        self.min_lon = min([wp.lon for wp in waypoints])
-        self.max_lat = max([wp.lat for wp in waypoints])
-        self.max_lon = max([wp.lon for wp in waypoints])
+        self.min_lat = min(wp.lat for wp in waypoints)
+        self.min_lon = min(wp.lon for wp in waypoints)
+        self.max_lat = max(wp.lat for wp in waypoints)
+        self.max_lon = max(wp.lon for wp in waypoints)
     
     def get_top_left(self):
         return Waypoint(self.max_lat, self.min_lon)
@@ -36,16 +30,20 @@ class BoundingBox:
         return Waypoint(self.max_lat, self.max_lon)
 
 class RoutePlotter:
-    def __init__(self, waypoints):
+    def __init__(self, waypoints, zoom=None):
         self.waypoints = waypoints
         if len(waypoints) < 2:
             raise ValueError("At least two waypoints are required to plot a route.")
 
-        self.zoom = 10 # Larger number = more detail
         self.osm_obj = osm_tile_manager.OSMTileManager()
         self.bounding_box = BoundingBox(waypoints)
         self.basemap_obj = None
-        self.set_zoom() # Set zoom level automatically based on waypoints
+        if zoom is None:
+            self.set_zoom()  # Set zoom level automatically based on waypoints
+        else:
+            if zoom < 0 or zoom > 19:
+                raise ValueError("Zoom level must be between 0 and 19.")
+            self.zoom = zoom # Higher value means more detail
 
     def set_zoom(self):
         # Select zoom 0-19 based on the bounding box of the waypoints
@@ -82,26 +80,20 @@ class RoutePlotter:
         bottom_right = self.bounding_box.get_bottom_right()
         bottom_right_tile_num = self.osm_obj.deg2tilenum(bottom_right.lat, bottom_right.lon, self.zoom)
         max_x, max_y = bottom_right_tile_num
-        img = None
+
+        tile_width, tile_height = 256, 256
+        stitched_width = (max_x - min_x + 1) * tile_width
+        stitched_height = (max_y - min_y + 1) * tile_height
+        stitched_map = Image.new('RGB', (stitched_width, stitched_height))
 
         for x in range(min_x, max_x + 1):
-            col_img = None
             for y in range(min_y, max_y + 1):
                 tile = self.osm_obj.get_tile(x, y, self.zoom)
                 if tile.mode == 'P':
                     tile = tile.convert('RGB')
-                tile = np.array(tile)
-                tile = Image.fromarray(tile)
+                stitched_map.paste(tile, ((x - min_x) * tile_width, (y - min_y) * tile_height))
 
-                if col_img is None:
-                    col_img = tile
-                else:
-                    col_img = np.concatenate((col_img, tile), axis=0)
-            if img is None:
-                img = col_img
-            else:
-                img = np.concatenate((img, col_img), axis=1)
-        return img
+        return stitched_map
     
     def plot_route(self):
         if self.basemap_obj is None:
@@ -130,6 +122,7 @@ if __name__ == "__main__":
         Waypoint(37.4213068, -122.093090),    # near Google
         Waypoint(37.365739, -121.905370)      # near SJ airport
     ]
+    # plotter = RoutePlotter(waypoints, 12) # Set zoom level manually
     plotter = RoutePlotter(waypoints)
     plotter.plot_map()
     plotter.plot_route()
