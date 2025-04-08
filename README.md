@@ -7,9 +7,6 @@ Run command `python3 plot_route_and_map.py` on a terminal to launch the default 
 ![Demo](demo.png)
 
 ## TODO
-- Static map
-    - Auto zoom select
-    - Tiles mild border in visualization
 - Make the plot interactive (try plotly and folium)
 - Area Analysis:
     - Show highway and local roads in different colors. (eg- plot all highways in SF bay area)
