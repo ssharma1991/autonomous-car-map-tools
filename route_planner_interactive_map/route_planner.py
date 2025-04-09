@@ -29,7 +29,7 @@ class RoutePlotter:
                           map= dict(
                               center=dict(lat=center.lat, lon=center.lon),
                               zoom=zoom,
-                              style='open-street-map'
+                              style='satellite-streets' # 'basic'/`carto-voyager`, 'open-street-map', 'satellite', 'satellite-streets' 
                           ))
         fig.show()
     
@@ -43,7 +43,6 @@ class RoutePlotter:
         lat_diff = max(wp.lat for wp in waypoints) - min(wp.lat for wp in waypoints)
         lon_diff = max(wp.lon for wp in waypoints) - min(wp.lon for wp in waypoints)
         max_diff = max(lat_diff, lon_diff)
-        print ("Max diff:", max_diff)
         zoom = math.ceil(math.log(360 / max_diff, 2))
         print("Zoom level set to:", zoom)
         return center, zoom
