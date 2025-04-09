@@ -29,8 +29,20 @@ class RoutePlotter:
                           map= dict(
                               center=dict(lat=center.lat, lon=center.lon),
                               zoom=zoom,
-                              style='satellite-streets' # 'basic'/`carto-voyager`, 'open-street-map', 'satellite', 'satellite-streets' 
-                          ))
+                              style='basic' # 'basic'/`carto-voyager`, 'open-street-map', 'satellite', 'satellite-streets' 
+                            ),
+                          updatemenus=[
+                            dict(
+                                type='buttons',
+                                buttons=[
+                                    dict(label='Basic', method='relayout', args=['map.style', 'basic']),
+                                    dict(label='Satellite', method='relayout', args=['map.style', 'satellite']),
+                                    dict(label='Satellite Streets', method='relayout', args=['map.style', 'satellite-streets']),
+                                    dict(label='Open Street Map', method='relayout', args=['map.style', 'open-street-map'])
+                                ]
+                            )
+                          ]
+                        )
         fig.show()
     
     def get_center_zoom(self, waypoints):
