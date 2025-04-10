@@ -7,7 +7,7 @@ from io import BytesIO
 from PIL import Image, ImageOps
 
 
-class OSMTileManager:
+class OSMHandler:
     def __init__(self):
         # Create a directory to store the tiles
         self.cache_path = "osm_tiles"
