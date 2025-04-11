@@ -8,5 +8,5 @@ waypoints = [
 route_planner = RoutePlanner()
 route_planner.add_waypoints(waypoints)
 route_planner.calculate_route()
-# route_planner.calculateVirtualDrive(speed, freq)
+route_planner.simulate_virtual_drive()
 route_planner.plot_interactive_map()

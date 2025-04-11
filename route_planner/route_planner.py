@@ -5,6 +5,7 @@ from PIL import Image
 import math
 import plotly.graph_objects as go
 import pandas as pd
+from geopy.distance import geodesic
 
 class Waypoint:
     def __init__(self, lat, lon):
@@ -35,9 +36,9 @@ class RoutePlanner:
         self.waypoints = None
         self.bounding_box = None
         self.route = None
+        self.virtual_drive = None
         self.zoom = None
         self.osm_obj = OSMHandler()
-        self.basemap_obj = None
 
     def add_waypoints(self, waypoints):
         self.waypoints = waypoints
@@ -56,11 +57,68 @@ class RoutePlanner:
         route = self.osm_obj.get_osrm_route(start, end)
         return [Waypoint(lat, lon) for lon, lat in route['routes'][0]['geometry']['coordinates']]
 
+    def simulate_virtual_drive(self, speed = 30, freq = 10):
+        # Spees in m/s, frequency in Hz
+        distance_per_timestep = speed / freq
+
+        if self.route is None:
+            raise ValueError("No route calculated. Please calculate the route before simulating the drive.")
+
+        self.virtual_drive = []
+        carryover_distance = 0
+        for i in range(1,len(self.route)):
+            segment_start = self.route[i-1]
+            segment_end = self.route[i]
+            segment_length = self.distance(segment_start, segment_end)
+
+            if carryover_distance > segment_length:
+                carryover_distance -= segment_length
+                continue
+
+            # Calculate offset
+            param = carryover_distance / segment_length
+            offset = self.interpolate(segment_start, segment_end, param)
+            self.virtual_drive.append(offset)
+
+            # Calculate all other waypoints
+            remaining_segment_length = self.distance(offset, segment_end)
+            num_steps = int(remaining_segment_length / distance_per_timestep)
+            for j in range(1, num_steps + 1):
+                distance_from_offset = j * distance_per_timestep
+                param = distance_from_offset / remaining_segment_length
+                wp = self.interpolate(offset, segment_end, param)
+                self.virtual_drive.append(wp)
+
+            # Calculate residual distance to carry over to next segment
+            carryover_distance = ((num_steps + 1) * distance_per_timestep) - remaining_segment_length
+
+    def interpolate(self, waypoint1, waypoint2, param):
+        # Interpolate between two waypoints
+        # 0 <= param <= 1
+        # param = 0 means waypoint1, param = 1 means waypoint2
+        if param < 0 or param > 1:
+            raise ValueError("Param must be between 0 and 1.")
+
+        lat1, lon1 = waypoint1.lat, waypoint1.lon
+        lat2, lon2 = waypoint2.lat, waypoint2.lon
+        lat = lat1 + (lat2 - lat1) * param
+        lon = lon1 + (lon2 - lon1) * param
+        return Waypoint(lat, lon)
+
+    def distance(self, waypoint1, waypoint2):
+        # Calculate the distance between two waypoints in meters
+        lat1, lon1 = waypoint1.lat, waypoint1.lon
+        lat2, lon2 = waypoint2.lat, waypoint2.lon
+        dist = geodesic((lat1, lon1), (lat2, lon2)).km * 1000
+        return dist
+
     def plot_static_map(self, zoom=None):
         if self.waypoints is None:
             raise ValueError("No waypoints added. Please add waypoints before plotting the map.")
         if self.route is None:
             print("WARNING: No route calculated. Please calculate the route before plotting.")
+        if self.virtual_drive is None:
+            print("WARNING: No virtual drive simulated. Please simulate the drive before plotting.")
         
         # Set Zoom level
         if zoom is None:
@@ -80,23 +138,30 @@ class RoutePlanner:
         tile_top_right_lat, tile_top_right_lon = self.osm_obj.tilenum2deg(tile_top_right_num[0]+1, tile_top_right_num[1], self.zoom)
         plt.figure()
         plt.title("Route and Map")
-        self.basemap_obj = Basemap(projection='merc',llcrnrlat=tile_bottom_left_lat,urcrnrlat=tile_top_right_lat,\
+        basemap_obj = Basemap(projection='merc',llcrnrlat=tile_bottom_left_lat,urcrnrlat=tile_top_right_lat,\
             llcrnrlon=tile_bottom_left_lon,urcrnrlon=tile_top_right_lon, ax=plt.gca(), resolution='h', area_thresh=1000)
-        self.basemap_obj.drawcoastlines()
-        self.basemap_obj.imshow(map_raster, interpolation='lanczos', origin='upper')
+        basemap_obj.drawcoastlines()
+        basemap_obj.imshow(map_raster, interpolation='lanczos', origin='upper')
 
         # Plot waypoints
         lats = [wp.lat for wp in self.waypoints]
         lons = [wp.lon for wp in self.waypoints]
-        x, y = self.basemap_obj(lons, lats)
-        self.basemap_obj.plot(x, y, marker='o', color='r', markersize=8, linewidth=0, label='Waypoints')
+        x, y = basemap_obj(lons, lats)
+        basemap_obj.plot(x, y, marker='o', color='r', markersize=8, linewidth=0, label='Waypoints')
 
         # Plot route
         if self.route:
             lats = [wp.lat for wp in self.route]
             lons = [wp.lon for wp in self.route]
-            x, y = self.basemap_obj(lons, lats)
-            self.basemap_obj.plot(x, y, marker='o', color='b', markersize=4, linewidth=1, label='Route')
+            x, y = basemap_obj(lons, lats)
+            basemap_obj.plot(x, y, marker='o', color='b', markersize=4, linewidth=1, label='Route')
+
+        # Plot virtual drive
+        if self.virtual_drive:
+            lats = [wp.lat for wp in self.virtual_drive]
+            lons = [wp.lon for wp in self.virtual_drive]
+            x, y = basemap_obj(lons, lats)
+            basemap_obj.plot(x, y, marker='o', color='g', markersize=2, linewidth=1, label='Virtual Drive')
 
         plt.legend()
         plt.tight_layout()
@@ -143,6 +208,8 @@ class RoutePlanner:
             raise ValueError("No waypoints added. Please add waypoints before plotting the map.")
         if self.route is None:
             print("WARNING: No route calculated. Please calculate the route before plotting.")
+        if self.virtual_drive is None:
+            print("WARNING: No virtual drive simulated. Please simulate the drive before plotting.")
         
         # Set Zoom level and center
         self.__set_zoom_interactive_map()
@@ -184,8 +251,16 @@ class RoutePlanner:
                 'latitude': [wp.lat for wp in self.route],
                 'longitude': [wp.lon for wp in self.route]
             })
-            fig.add_scattermap(mode='lines+markers', lat=df['latitude'], lon=df['longitude'], marker=dict(size=10, color='blue'), name='Route')
-        
+            fig.add_scattermap(mode='lines+markers', lat=df['latitude'], lon=df['longitude'], marker=dict(size=14, color='blue'), name='Route')
+
+        # Plot virtual drive
+        if self.virtual_drive:
+            df = pd.DataFrame({
+                'latitude': [wp.lat for wp in self.virtual_drive],
+                'longitude': [wp.lon for wp in self.virtual_drive]
+            })
+            fig.add_scattermap(mode='lines+markers', lat=df['latitude'], lon=df['longitude'], marker=dict(size=8, color='green'), name='Virtual Drive')
+
         fig.show()
 
     def __set_zoom_interactive_map(self):
