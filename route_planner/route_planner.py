@@ -37,6 +37,7 @@ class RoutePlanner:
         self.bounding_box = None
         self.route = None
         self.virtual_drive = None
+        self.virtual_drive_df = None
         self.zoom = None
         self.osm_obj = OSMHandler()
 
@@ -91,6 +92,14 @@ class RoutePlanner:
 
             # Calculate residual distance to carry over to next segment
             carryover_distance = ((num_steps + 1) * distance_per_timestep) - remaining_segment_length
+
+        # Populate the virtual drive DataFrame
+        self.virtual_drive_df = pd.DataFrame()
+        start_epoch = pd.Timestamp(year=2025, month=1, day=1, hour=12).timestamp()
+        self.virtual_drive_df['timestamp_s'] = [start_epoch + i / freq for i in range(len(self.virtual_drive))]
+        self.virtual_drive_df['latitude_deg'] = [wp.lat for wp in self.virtual_drive]
+        self.virtual_drive_df['longitude_deg'] = [wp.lon for wp in self.virtual_drive]
+        self.virtual_drive_df['speed_m_per_s'] = speed
 
     def __interpolate(self, waypoint1, waypoint2, param):
         # Interpolate between two waypoints
@@ -272,3 +281,9 @@ class RoutePlanner:
 
     def get_virtual_drive(self):
         return self.virtual_drive
+
+    def save_virtual_drive(self, filename = "virtual_drive.csv"):
+        if self.virtual_drive_df is None:
+            raise ValueError("No virtual drive simulated. Please simulate the drive before saving.")
+        self.virtual_drive_df.to_csv(filename, index=False)
+        print(f"Virtual drive data saved to {filename}")

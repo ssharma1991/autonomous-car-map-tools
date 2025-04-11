@@ -11,3 +11,4 @@ route_planner.calculate_route()
 route_planner.simulate_virtual_drive()
 # route_planner.simulate_virtual_drive(45, 10) # Manually set speed and distance
 route_planner.plot_interactive_map()
+route_planner.save_virtual_drive()
