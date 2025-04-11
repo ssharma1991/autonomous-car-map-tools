@@ -69,7 +69,7 @@ class RoutePlanner:
         for i in range(1,len(self.route)):
             segment_start = self.route[i-1]
             segment_end = self.route[i]
-            segment_length = self.distance(segment_start, segment_end)
+            segment_length = self.__distance(segment_start, segment_end)
 
             if carryover_distance > segment_length:
                 carryover_distance -= segment_length
@@ -77,22 +77,22 @@ class RoutePlanner:
 
             # Calculate offset
             param = carryover_distance / segment_length
-            offset = self.interpolate(segment_start, segment_end, param)
+            offset = self.__interpolate(segment_start, segment_end, param)
             self.virtual_drive.append(offset)
 
             # Calculate all other waypoints
-            remaining_segment_length = self.distance(offset, segment_end)
+            remaining_segment_length = self.__distance(offset, segment_end)
             num_steps = int(remaining_segment_length / distance_per_timestep)
             for j in range(1, num_steps + 1):
                 distance_from_offset = j * distance_per_timestep
                 param = distance_from_offset / remaining_segment_length
-                wp = self.interpolate(offset, segment_end, param)
+                wp = self.__interpolate(offset, segment_end, param)
                 self.virtual_drive.append(wp)
 
             # Calculate residual distance to carry over to next segment
             carryover_distance = ((num_steps + 1) * distance_per_timestep) - remaining_segment_length
 
-    def interpolate(self, waypoint1, waypoint2, param):
+    def __interpolate(self, waypoint1, waypoint2, param):
         # Interpolate between two waypoints
         # 0 <= param <= 1
         # param = 0 means waypoint1, param = 1 means waypoint2
@@ -105,7 +105,7 @@ class RoutePlanner:
         lon = lon1 + (lon2 - lon1) * param
         return Waypoint(lat, lon)
 
-    def distance(self, waypoint1, waypoint2):
+    def __distance(self, waypoint1, waypoint2):
         # Calculate the distance between two waypoints in meters
         lat1, lon1 = waypoint1.lat, waypoint1.lon
         lat2, lon2 = waypoint2.lat, waypoint2.lon
@@ -266,3 +266,9 @@ class RoutePlanner:
     def __set_zoom_interactive_map(self):
         self.__set_zoom_static_map()
         self.zoom = self.zoom - 1
+
+    def get_route(self):
+        return self.route
+
+    def get_virtual_drive(self):
+        return self.virtual_drive

@@ -18,6 +18,5 @@ Run command `python3 route_planner/demo_route_interactive.py` on a terminal to l
 - Area Analysis:
     - Show highway and local roads in different colors. (eg- plot all highways in SF bay area)
 - Route Analysis:
-    - Create synthetic GNSS drive data on a route (inputs- vehicle speed, GNSS frequency)
     - Visualize "nearby" highway data during the drive (implement drive timestamp slider)
 - Maybe rename repo to "autonomous-car-map-tools"
