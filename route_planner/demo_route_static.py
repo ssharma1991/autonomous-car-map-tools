@@ -9,6 +9,8 @@ route_planner = RoutePlanner()
 route_planner.add_waypoints(waypoints)
 route_planner.calculate_route()
 route_planner.simulate_virtual_drive()
+# route_planner.simulate_virtual_drive(45, 10) # Manually set speed and distance
 route_planner.plot_static_map() # Set zoom level automatically
 # route_planner.plot_static_map(12)  # Set zoom level manually
 route_planner.save_virtual_drive()
+route_planner.show_metrics()

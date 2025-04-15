@@ -61,6 +61,38 @@ class OSMHandler:
     
     def get_osrm_route(self, start, end):
         url = f"http://router.project-osrm.org/route/v1/driving/{start.lon},{start.lat};{end.lon},{end.lat}?overview=full&geometries=geojson"
+        print(f"Fetching route from OSRM: from ({start.lat}, {start.lon}) to ({end.lat}, {end.lon})")
         response = requests.get(url)
         return response.json()
-    
+
+    # Ref: https://www.opentopodata.org/
+    def get_opentopo_elevation_multiple_batch(self, waypoints):
+        elevations = []
+        batch_size = 100
+
+        for i in range(0, len(waypoints), batch_size):
+            batch = waypoints[i:i + batch_size]
+            batch_elevations = self.get_opentopo_elevation_single_batch(batch)
+            elevations.extend(batch_elevations)
+
+            # Wait for 1 second between API calls
+            sleep(1)
+
+        return elevations
+
+    def get_opentopo_elevation_single_batch(self, waypoints):
+        if len(waypoints) > 100:
+            print("Too many waypoints, using only the first 100.")
+            waypoints = waypoints[:100]
+
+        url = "https://api.opentopodata.org/v1/aster30m?locations="
+        locations = "|".join([f"{w.lat},{w.lon}" for w in waypoints])
+        print(f"Fetching elevation data from OpenTopo for {len(waypoints)} waypoints")
+        response = requests.get(url + locations)
+
+        if response.status_code == 200:
+            data = response.json()
+            return [result['elevation'] for result in data['results']]
+        else:
+            print(f"Error fetching elevation data: {response.status_code}")
+            return []

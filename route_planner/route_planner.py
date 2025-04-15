@@ -8,9 +8,10 @@ import pandas as pd
 from geopy.distance import geodesic
 
 class Waypoint:
-    def __init__(self, lat, lon):
+    def __init__(self, lat, lon, alt=None):
         self.lat = lat
         self.lon = lon
+        self.alt = alt
 
 class BoundingBox:
     def __init__(self, waypoints):
@@ -50,13 +51,22 @@ class RoutePlanner:
     def calculate_route(self):
         route = []
         for i in range(len(self.waypoints) - 1):
-            route.extend(self.__generate_route_segment(self.waypoints[i], self.waypoints[i + 1])[:-1]) # skip last point
-        route.append(self.waypoints[-1])
+            route_segment = self.__generate_route_segment(self.waypoints[i], self.waypoints[i + 1])
+            route.extend(route_segment[:-1]) # skip last point
+        route.append(route_segment[-1])
         self.route = route
 
     def __generate_route_segment(self, start, end):
+        # Calculate route lat/lon
         route = self.osm_obj.get_osrm_route(start, end)
-        return [Waypoint(lat, lon) for lon, lat in route['routes'][0]['geometry']['coordinates']]
+        route = [Waypoint(lat, lon) for lon, lat in route['routes'][0]['geometry']['coordinates']]
+
+        # Calculate route elevation
+        elevations = self.osm_obj.get_opentopo_elevation_multiple_batch(route)
+        for i in range(len(route)):
+            route[i].alt = elevations[i]
+
+        return route
 
     def simulate_virtual_drive(self, speed = 30, freq = 10):
         # Spees in m/s, frequency in Hz
@@ -99,6 +109,7 @@ class RoutePlanner:
         self.virtual_drive_df['timestamp_s'] = [start_epoch + i / freq for i in range(len(self.virtual_drive))]
         self.virtual_drive_df['latitude_deg'] = [wp.lat for wp in self.virtual_drive]
         self.virtual_drive_df['longitude_deg'] = [wp.lon for wp in self.virtual_drive]
+        self.virtual_drive_df['altitude_m'] = [wp.alt for wp in self.virtual_drive]
         self.virtual_drive_df['speed_m_per_s'] = speed
 
     def __interpolate(self, waypoint1, waypoint2, param):
@@ -108,11 +119,15 @@ class RoutePlanner:
         if param < 0 or param > 1:
             raise ValueError("Param must be between 0 and 1.")
 
-        lat1, lon1 = waypoint1.lat, waypoint1.lon
-        lat2, lon2 = waypoint2.lat, waypoint2.lon
-        lat = lat1 + (lat2 - lat1) * param
-        lon = lon1 + (lon2 - lon1) * param
-        return Waypoint(lat, lon)
+        lat1, lon1, alt1 = waypoint1.lat, waypoint1.lon, waypoint1.alt
+        lat2, lon2, alt2 = waypoint2.lat, waypoint2.lon, waypoint2.alt
+        lat = round(lat1 + (lat2 - lat1) * param, 7) # 7 decimal places means ~1cm accuracy
+        lon = round(lon1 + (lon2 - lon1) * param, 7)
+        if alt1 is not None and alt2 is not None:
+            alt = round(alt1 + (alt2 - alt1) * param, 2)
+        else:
+            alt = None
+        return Waypoint(lat, lon, alt)
 
     def __distance(self, waypoint1, waypoint2):
         # Calculate the distance between two waypoints in meters
@@ -258,17 +273,19 @@ class RoutePlanner:
         if self.route:
             df = pd.DataFrame({
                 'latitude': [wp.lat for wp in self.route],
-                'longitude': [wp.lon for wp in self.route]
+                'longitude': [wp.lon for wp in self.route],
+                'altitude': [wp.alt for wp in self.route]
             })
-            fig.add_scattermap(mode='lines+markers', lat=df['latitude'], lon=df['longitude'], marker=dict(size=14, color='blue'), name='Route')
+            fig.add_scattermap(mode='lines+markers', lat=df['latitude'], lon=df['longitude'], marker=dict(size=14, color='blue'), name='Route', text=[f"Altitude: {alt} m" for alt in df['altitude']])
 
         # Plot virtual drive
         if self.virtual_drive:
             df = pd.DataFrame({
                 'latitude': [wp.lat for wp in self.virtual_drive],
-                'longitude': [wp.lon for wp in self.virtual_drive]
+                'longitude': [wp.lon for wp in self.virtual_drive],
+                'altitude': [wp.alt for wp in self.virtual_drive]
             })
-            fig.add_scattermap(mode='lines+markers', lat=df['latitude'], lon=df['longitude'], marker=dict(size=8, color='green'), name='Virtual Drive')
+            fig.add_scattermap(mode='lines+markers', lat=df['latitude'], lon=df['longitude'], marker=dict(size=8, color='green'), name='Virtual Drive', text=[f"Altitude: {alt} m" for alt in df['altitude']])
 
         fig.show()
 
@@ -287,3 +304,19 @@ class RoutePlanner:
             raise ValueError("No virtual drive simulated. Please simulate the drive before saving.")
         self.virtual_drive_df.to_csv(filename, index=False)
         print(f"Virtual drive data saved to {filename}")
+
+    def show_metrics(self):
+        if self.route:
+            total_distance = sum(self.__distance(self.route[i], self.route[i + 1]) for i in range(len(self.route) - 1))
+            print("\nRoute Metrics:")
+            print(f"  - Number of waypoints: {len(self.route)}")
+            print(f"  - Route length: {total_distance:.2f} meters")
+
+        if self.virtual_drive:
+            print("\nVirtual Drive Metrics:")
+            print(f"  - Number of datapoints: {len(self.virtual_drive)}")
+
+        if self.virtual_drive_df is not None:
+            duration = self.virtual_drive_df['timestamp_s'].iloc[-1] - self.virtual_drive_df['timestamp_s'].iloc[0]
+            print("\nVirtual Drive DataFrame Metrics:")
+            print(f"  - Duration: {duration:.2f} seconds")
