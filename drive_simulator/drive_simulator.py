@@ -1,4 +1,4 @@
-from osm_handler import OSMHandler
+from map_api_client import MapAPIClient
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from PIL import Image
@@ -40,7 +40,7 @@ class DriveSimulator:
         self.virtual_drive = None
         self.virtual_drive_df = None
         self.zoom = None
-        self.osm_obj = OSMHandler()
+        self.map_api_obj = MapAPIClient()
 
     def add_waypoints(self, waypoints):
         self.waypoints = waypoints
@@ -58,11 +58,11 @@ class DriveSimulator:
 
     def __generate_route_segment(self, start, end):
         # Calculate route lat/lon
-        route = self.osm_obj.get_osrm_route(start, end)
+        route = self.map_api_obj.get_osrm_route(start, end)
         route = [Waypoint(lat, lon) for lon, lat in route['routes'][0]['geometry']['coordinates']]
 
         # Calculate route elevation
-        elevations = self.osm_obj.get_opentopo_elevation_multiple_batch(route)
+        elevations = self.map_api_obj.get_opentopo_elevation_batch(route)
         for i in range(len(route)):
             route[i].alt = elevations[i]
 
@@ -156,10 +156,10 @@ class DriveSimulator:
         # Plot map
         map_raster = self.__get_stitched_map()
         bb = self.bounding_box
-        tile_bottom_left_num = self.osm_obj.deg2tilenum(bb.get_bottom_left().lat, bb.get_bottom_left().lon, self.zoom)
-        tile_bottom_left_lat, tile_bottom_left_lon = self.osm_obj.tilenum2deg(tile_bottom_left_num[0], tile_bottom_left_num[1]+1, self.zoom)
-        tile_top_right_num = self.osm_obj.deg2tilenum(bb.get_top_right().lat, bb.get_top_right().lon, self.zoom)
-        tile_top_right_lat, tile_top_right_lon = self.osm_obj.tilenum2deg(tile_top_right_num[0]+1, tile_top_right_num[1], self.zoom)
+        tile_bottom_left_num = self.map_api_obj.deg2tilenum(bb.get_bottom_left().lat, bb.get_bottom_left().lon, self.zoom)
+        tile_bottom_left_lat, tile_bottom_left_lon = self.map_api_obj.tilenum2deg(tile_bottom_left_num[0], tile_bottom_left_num[1]+1, self.zoom)
+        tile_top_right_num = self.map_api_obj.deg2tilenum(bb.get_top_right().lat, bb.get_top_right().lon, self.zoom)
+        tile_top_right_lat, tile_top_right_lon = self.map_api_obj.tilenum2deg(tile_top_right_num[0]+1, tile_top_right_num[1], self.zoom)
         plt.figure()
         plt.title("Static map with waypoints, route, and virtual drive")
         basemap_obj = Basemap(projection='merc',llcrnrlat=tile_bottom_left_lat,urcrnrlat=tile_top_right_lat,\
@@ -207,10 +207,10 @@ class DriveSimulator:
     
     def __get_stitched_map(self):
         top_left = self.bounding_box.get_top_left()
-        top_left_tile_num = self.osm_obj.deg2tilenum(top_left.lat, top_left.lon, self.zoom)
+        top_left_tile_num = self.map_api_obj.deg2tilenum(top_left.lat, top_left.lon, self.zoom)
         min_x, min_y = top_left_tile_num
         bottom_right = self.bounding_box.get_bottom_right()
-        bottom_right_tile_num = self.osm_obj.deg2tilenum(bottom_right.lat, bottom_right.lon, self.zoom)
+        bottom_right_tile_num = self.map_api_obj.deg2tilenum(bottom_right.lat, bottom_right.lon, self.zoom)
         max_x, max_y = bottom_right_tile_num
 
         tile_width, tile_height = 256, 256
@@ -220,7 +220,7 @@ class DriveSimulator:
 
         for x in range(min_x, max_x + 1):
             for y in range(min_y, max_y + 1):
-                tile = self.osm_obj.get_tile(x, y, self.zoom)
+                tile = self.map_api_obj.get_tile(x, y, self.zoom)
                 if tile.mode == 'P':
                     tile = tile.convert('RGB')
                 stitched_map.paste(tile, ((x - min_x) * tile_width, (y - min_y) * tile_height))

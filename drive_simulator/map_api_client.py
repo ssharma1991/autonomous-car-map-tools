@@ -1,5 +1,4 @@
 import os
-from random import uniform  
 from time import sleep 
 import requests
 import math
@@ -7,7 +6,7 @@ from io import BytesIO
 from PIL import Image, ImageOps
 
 
-class OSMHandler:
+class MapAPIClient:
     def __init__(self):
         # Create a directory to store the tiles
         self.cache_path = "osm_tiles"
@@ -66,13 +65,12 @@ class OSMHandler:
         return response.json()
 
     # Ref: https://www.opentopodata.org/
-    def get_opentopo_elevation_multiple_batch(self, waypoints):
+    def get_opentopo_elevation_batch(self, waypoints, batch_size=100):
         elevations = []
-        batch_size = 100
 
         for i in range(0, len(waypoints), batch_size):
             batch = waypoints[i:i + batch_size]
-            batch_elevations = self.get_opentopo_elevation_single_batch(batch)
+            batch_elevations = self.get_opentopo_elevation(batch)
             elevations.extend(batch_elevations)
 
             # Wait for 1 second between API calls
@@ -80,9 +78,9 @@ class OSMHandler:
 
         return elevations
 
-    def get_opentopo_elevation_single_batch(self, waypoints):
+    def get_opentopo_elevation(self, waypoints):
         if len(waypoints) > 100:
-            print("Too many waypoints, using only the first 100.")
+            print("Too many waypoints, using only the first 100. For more waypoints, use get_opentopo_elevation_batch()")
             waypoints = waypoints[:100]
 
         url = "https://api.opentopodata.org/v1/aster30m?locations="
