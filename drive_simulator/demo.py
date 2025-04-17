@@ -6,18 +6,18 @@ waypoints = [
     Waypoint(37.365739, -121.905370)      # near SJ airport
 ]
 
-# Initialize
+print ("\nInitializing DriveSimulator")
 drive_sim = DriveSimulator()
 drive_sim.add_waypoints(waypoints)
 
-# Calculate route and simulate virtual drive
+print ("\nCalculating route and simulating virtual drive")
 drive_sim.calculate_route()
 drive_sim.simulate_virtual_drive()
 # drive_sim.simulate_virtual_drive(45, 10) # Manually set speed and distance
 drive_sim.save_virtual_drive()
 drive_sim.show_metrics()
 
-# Visualize route and drive
+print ("\nVisualizing route and drive")
 drive_sim.plot_interactive_map()
 drive_sim.plot_static_map() # Set zoom level automatically
 # drive_sim.plot_static_map(12)  # Set zoom level manually

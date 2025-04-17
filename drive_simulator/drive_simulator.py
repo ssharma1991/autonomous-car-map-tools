@@ -136,6 +136,35 @@ class DriveSimulator:
         dist = geodesic((lat1, lon1), (lat2, lon2)).km * 1000
         return dist
 
+    def save_virtual_drive(self, filename = "demo_virtual_drive.csv"):
+        if self.virtual_drive_df is None:
+            raise ValueError("No virtual drive simulated. Please simulate the drive before saving.")
+        self.virtual_drive_df.to_csv(filename, index=False)
+        print(f"Virtual drive data saved to {filename}")
+
+    def show_metrics(self):
+        print("#" * 20)
+        if self.route:
+            total_distance = sum(self.__distance(self.route[i], self.route[i + 1]) for i in range(len(self.route) - 1))
+            print("Route Metrics:")
+            print(f"  - Number of waypoints: {len(self.route)}")
+            print(f"  - Route length: {total_distance:.2f} meters")
+
+        if self.virtual_drive_df is not None:
+            duration = self.virtual_drive_df['timestamp_s'].iloc[-1] - self.virtual_drive_df['timestamp_s'].iloc[0]
+            print("Virtual Drive Metrics:")
+            print(f"  - Drive speed: {self.virtual_drive_df['speed_m_per_s'].iloc[0]} m/s")
+            print(f"  - GNSS frequency: {1 / (self.virtual_drive_df['timestamp_s'].iloc[1] - self.virtual_drive_df['timestamp_s'].iloc[0]):.2f} Hz")
+            print(f"  - Number of waypoints: {len(self.virtual_drive_df)}")
+            print(f"  - Drive duration: {duration:.2f} seconds")
+        print("#" * 20)
+
+    def get_route(self):
+        return self.route
+
+    def get_virtual_drive(self):
+        return self.virtual_drive
+
     def plot_static_map(self, zoom=None):
         if self.waypoints is None:
             raise ValueError("No waypoints added. Please add waypoints before plotting the map.")
@@ -293,33 +322,3 @@ class DriveSimulator:
         self.__set_zoom_static_map()
         self.zoom = self.zoom - 1
 
-    def get_route(self):
-        return self.route
-
-    def get_virtual_drive(self):
-        return self.virtual_drive
-
-    def save_virtual_drive(self, filename = "demo_virtual_drive.csv"):
-        if self.virtual_drive_df is None:
-            raise ValueError("No virtual drive simulated. Please simulate the drive before saving.")
-        self.virtual_drive_df.to_csv(filename, index=False)
-        print(f"Virtual drive data saved to {filename}")
-
-    def show_metrics(self):
-        print("#" * 20)
-        print("Metrics")
-        print("#" * 20)
-        if self.route:
-            total_distance = sum(self.__distance(self.route[i], self.route[i + 1]) for i in range(len(self.route) - 1))
-            print("Route Metrics:")
-            print(f"  - Number of waypoints: {len(self.route)}")
-            print(f"  - Route length: {total_distance:.2f} meters")
-
-        if self.virtual_drive_df is not None:
-            duration = self.virtual_drive_df['timestamp_s'].iloc[-1] - self.virtual_drive_df['timestamp_s'].iloc[0]
-            print("Virtual Drive Metrics:")
-            print(f"  - Drive speed: {self.virtual_drive_df['speed_m_per_s'].iloc[0]} m/s")
-            print(f"  - GNSS frequency: {1 / (self.virtual_drive_df['timestamp_s'].iloc[1] - self.virtual_drive_df['timestamp_s'].iloc[0]):.2f} Hz")
-            print(f"  - Number of waypoints: {len(self.virtual_drive_df)}")
-            print(f"  - Drive duration: {duration:.2f} seconds")
-        print("#" * 20)
