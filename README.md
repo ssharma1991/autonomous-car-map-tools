@@ -15,6 +15,7 @@ Run command `python3 route_planner/demo_route_interactive.py` on a terminal to l
 ![Demo](route_planner/demo_route_interactive.png)
 
 ## TODO
+- Update readme and add details about simulating virtual drive.
 - Area Analysis:
     - Show highway and local roads in different colors. (eg- plot all highways in SF bay area)
 - Route Analysis:

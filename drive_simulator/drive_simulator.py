@@ -32,7 +32,7 @@ class BoundingBox:
     def get_top_right(self):
         return Waypoint(self.max_lat, self.max_lon)
 
-class RoutePlanner:
+class DriveSimulator:
     def __init__(self):
         self.waypoints = None
         self.bounding_box = None
@@ -161,7 +161,7 @@ class RoutePlanner:
         tile_top_right_num = self.osm_obj.deg2tilenum(bb.get_top_right().lat, bb.get_top_right().lon, self.zoom)
         tile_top_right_lat, tile_top_right_lon = self.osm_obj.tilenum2deg(tile_top_right_num[0]+1, tile_top_right_num[1], self.zoom)
         plt.figure()
-        plt.title("Route and Map")
+        plt.title("Static map with waypoints, route, and virtual drive")
         basemap_obj = Basemap(projection='merc',llcrnrlat=tile_bottom_left_lat,urcrnrlat=tile_top_right_lat,\
             llcrnrlon=tile_bottom_left_lon,urcrnrlon=tile_top_right_lon, ax=plt.gca(), resolution='h', area_thresh=1000)
         basemap_obj.drawcoastlines()
@@ -243,7 +243,7 @@ class RoutePlanner:
 
         # Plot map using Plotly
         fig = go.Figure()
-        fig.update_layout(title='Route Plot',
+        fig.update_layout(title='Interactive map with waypoints, route, and virtual drive',
                           map=dict(
                               center=dict(lat=center.lat, lon=center.lon),
                               zoom=self.zoom,
@@ -299,24 +299,27 @@ class RoutePlanner:
     def get_virtual_drive(self):
         return self.virtual_drive
 
-    def save_virtual_drive(self, filename = "virtual_drive.csv"):
+    def save_virtual_drive(self, filename = "demo_virtual_drive.csv"):
         if self.virtual_drive_df is None:
             raise ValueError("No virtual drive simulated. Please simulate the drive before saving.")
         self.virtual_drive_df.to_csv(filename, index=False)
         print(f"Virtual drive data saved to {filename}")
 
     def show_metrics(self):
+        print("#" * 20)
+        print("Metrics")
+        print("#" * 20)
         if self.route:
             total_distance = sum(self.__distance(self.route[i], self.route[i + 1]) for i in range(len(self.route) - 1))
-            print("\nRoute Metrics:")
+            print("Route Metrics:")
             print(f"  - Number of waypoints: {len(self.route)}")
             print(f"  - Route length: {total_distance:.2f} meters")
 
-        if self.virtual_drive:
-            print("\nVirtual Drive Metrics:")
-            print(f"  - Number of datapoints: {len(self.virtual_drive)}")
-
         if self.virtual_drive_df is not None:
             duration = self.virtual_drive_df['timestamp_s'].iloc[-1] - self.virtual_drive_df['timestamp_s'].iloc[0]
-            print("\nVirtual Drive DataFrame Metrics:")
-            print(f"  - Duration: {duration:.2f} seconds")
+            print("Virtual Drive Metrics:")
+            print(f"  - Drive speed: {self.virtual_drive_df['speed_m_per_s'].iloc[0]} m/s")
+            print(f"  - GNSS frequency: {1 / (self.virtual_drive_df['timestamp_s'].iloc[1] - self.virtual_drive_df['timestamp_s'].iloc[0]):.2f} Hz")
+            print(f"  - Number of waypoints: {len(self.virtual_drive_df)}")
+            print(f"  - Drive duration: {duration:.2f} seconds")
+        print("#" * 20)
