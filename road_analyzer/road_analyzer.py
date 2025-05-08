@@ -64,7 +64,7 @@ class RoadAnalyzer:
 
         # Print the number of edges for each highway type
         # Ref: https://wiki.openstreetmap.org/wiki/Map_features#Highway
-        print("\nNumber of edges based on highway type:")
+        print("\nNumber of edges based on OpenStreetMap highway type:")
         highway_types = set(edge_data.get('highway') for _, _, _, edge_data in self.graph.edges(keys=True, data=True))
         for highway_type in highway_types:
             if highway_type is None:
@@ -72,12 +72,12 @@ class RoadAnalyzer:
             count = sum(1 for _, _, _, edge_data in self.graph.edges(keys=True, data=True) if edge_data.get('highway') == highway_type)
             print(f"  {highway_type}: {count}")
 
-    def classify_road_for_adas(self):
+    def simplify_road_classification(self):
         if self.graph is None:
             raise ValueError("No graph data available. Please fetch road data first.")
 
         # Define highway categories with their corresponding types and colors
-        adas_road_categories = {
+        simplified_road_categories = {
             'highway': {
                 'types': ['motorway', 'motorway_link'],
                 'color': 'green'
@@ -103,43 +103,43 @@ class RoadAnalyzer:
         # Add category and color to each edge
         for u, v, k, edge_data in self.graph.edges(keys=True, data=True):
             highway_type = edge_data.get('highway', None)
-            for category, attributes in adas_road_categories.items():
+            for category, attributes in simplified_road_categories.items():
                 if attributes['types'] is None or highway_type in attributes['types']:
-                    edge_data['adas_category'] = category
-                    edge_data['adas_color'] = attributes['color']
+                    edge_data['simplified_highway_category'] = category
+                    edge_data['simplified_highway_color'] = attributes['color']
                     break
             else:
-                edge_data['category'] = 'other'
-                edge_data['color'] = adas_road_categories['other']['color']
+                edge_data['simplified_highway_category'] = 'other'
+                edge_data['simplified_highway_color'] = simplified_road_categories['other']['color']
 
         # Count edges for each category
-        adas_road_categories_count = {category: 0 for category in adas_road_categories}
+        road_categories_count = {category: 0 for category in simplified_road_categories}
         for _, _, k, edge_data in self.graph.edges(keys=True, data=True):
-            category = edge_data.get('adas_category', 'other')
-            adas_road_categories_count[category] += 1
+            category = edge_data.get('simplified_highway_category', 'other')
+            road_categories_count[category] += 1
 
         # Print edge count for each category
-        print("\nNumber of edges based on ADAS categories:")
-        for category, count in adas_road_categories_count.items():
-            types = adas_road_categories[category]['types']
+        print("\nNumber of edges based on simplified categories:")
+        for category, count in road_categories_count.items():
+            types = simplified_road_categories[category]['types']
             types_str = ', '.join(types) if types else 'All other types'
             print(f"  {category} ({types_str}): {count}")
 
-    def plot_graph(self):
+    def plot_static_map(self):
         if self.graph is None:
             raise ValueError("No graph data available. Please fetch road data first.")
 
         # Assign colors to edges based on highway type
         edges_color_list = []
         for u, v, k, edge_data in self.graph.edges(keys=True, data=True):
-            color = edge_data.get('adas_color', 'lightgray')
+            color = edge_data.get('simplified_highway_color', 'lightgray')
             edges_color_list.append(color)
 
         # Plot the graph
         fig, ax = ox.plot_graph(self.graph, edge_color=edges_color_list, bgcolor='white', node_size=0)
         plt.show()
 
-    def plot_graph_with_background_map(self):
+    def plot_interactive_map(self):
         if self.graph is None:
             raise ValueError("No graph data available. Please fetch road data first.")
 
@@ -183,26 +183,26 @@ class RoadAnalyzer:
         # Collect lines segments for each highway type
         plot_data = {}
         for _, edge in gdf_edges.iterrows():
-            adas_type = edge['adas_category']
-            if adas_type not in plot_data:
-                plot_data[adas_type] = {
+            hwy_type = edge['simplified_highway_category']
+            if hwy_type not in plot_data:
+                plot_data[hwy_type] = {
                     'lat': [],
                     'lon': [],
-                    'color': edge['adas_color']
+                    'color': edge['simplified_highway_color']
                 }
-            plot_data[adas_type]['lat'].extend(edge.geometry.xy[1])
-            plot_data[adas_type]['lat'].append(None)  # Add None to separate segments
-            plot_data[adas_type]['lon'].extend(edge.geometry.xy[0])
-            plot_data[adas_type]['lon'].append(None)  # Add None to separate segments
+            plot_data[hwy_type]['lat'].extend(edge.geometry.xy[1])
+            plot_data[hwy_type]['lat'].append(None)  # Add None to separate segments
+            plot_data[hwy_type]['lon'].extend(edge.geometry.xy[0])
+            plot_data[hwy_type]['lon'].append(None)  # Add None to separate segments
 
         # Plot the lines for each highway type
-        for adas_type, data in plot_data.items():
-            line_width = 4 if adas_type in ['highway', 'main_road'] else 1
+        for hwy_type, data in plot_data.items():
+            line_width = 4 if hwy_type in ['highway', 'main_road'] else 1
             fig.add_scattermap(
                 lat=data['lat'],
                 lon=data['lon'],
                 mode='lines',
                 line=dict(color=data['color'], width=line_width),
-                name=adas_type
+                name=hwy_type
             )
         fig.show()
