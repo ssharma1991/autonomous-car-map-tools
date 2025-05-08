@@ -14,6 +14,28 @@ class RoadAnalyzer:
     def __init__(self):
         self.bbox = None
         self.graph = None
+        self.simplified_road_categories = {
+            'highway': {
+                'types': ['motorway', 'motorway_link'],
+                'color': 'green'
+            },
+            'main_road': {
+                'types': ['trunk', 'trunk_link', 'primary', 'primary_link'],
+                'color': 'orange'
+            },
+            'secondary_road': {
+                'types': ['secondary', 'secondary_link', 'tertiary', 'tertiary_link'],
+                'color': 'blue'
+            },
+            'local_road': {
+                'types': ['residential', 'living_street'],
+                'color': 'gray'
+            },
+            'other': {
+                'types': None,
+                'color': 'lightgray'
+            }
+        }
 
     def add_bounding_box(self, bbox):
         if not isinstance(bbox, BoundingBox):
@@ -22,7 +44,7 @@ class RoadAnalyzer:
 
     def fetch_road_data(self):
         if self.bbox is None:
-            raise ValueError("Bounding box is not set. Please set a bounding box first.")
+            raise ValueError("Bounding box is not set. Please set a bounding box using the 'add_bounding_box' method before fetching road data.")
 
         self.graph = ox.graph.graph_from_bbox(
             [self.bbox.left, self.bbox.bottom, self.bbox.right, self.bbox.top],
@@ -41,14 +63,14 @@ class RoadAnalyzer:
 
     def export_for_qgis(self, filepath='road_data.gpkg'):
         if self.graph is None:
-            raise ValueError("No graph data available. Please fetch road data first.")
+            raise ValueError("No graph data available. Please fetch road data first using the 'fetch_road_data' method.")
 
         # Save data as geopackage to visualize in QGIS
         ox.save_graph_geopackage(self.graph, filepath=filepath, directed=True, encoding='utf-8')
 
     def show_road_stats(self):
         if self.graph is None:
-            raise ValueError("No graph data available. Please fetch road data first.")
+            raise ValueError("No graph data available. Please fetch road data first using the 'fetch_road_data' method.")
 
         # Print basic statistics of the graph
         print("\nGraph Statistics:")
@@ -74,46 +96,22 @@ class RoadAnalyzer:
 
     def simplify_road_classification(self):
         if self.graph is None:
-            raise ValueError("No graph data available. Please fetch road data first.")
-
-        # Define highway categories with their corresponding types and colors
-        simplified_road_categories = {
-            'highway': {
-                'types': ['motorway', 'motorway_link'],
-                'color': 'green'
-            },
-            'main_road': {
-                'types': ['trunk', 'trunk_link', 'primary', 'primary_link'],
-                'color': 'orange'
-            },
-            'secondary_road': {
-                'types': ['secondary', 'secondary_link', 'tertiary', 'tertiary_link'],
-                'color': 'blue'
-            },
-            'local_road': {
-                'types': ['residential', 'living_street'],
-                'color': 'gray'
-            },
-            'other': {
-                'types': None,
-                'color': 'lightgray'
-            }
-        }
+            raise ValueError("No graph data available. Please fetch road data first using the 'fetch_road_data' method.")
 
         # Add category and color to each edge
         for u, v, k, edge_data in self.graph.edges(keys=True, data=True):
             highway_type = edge_data.get('highway', None)
-            for category, attributes in simplified_road_categories.items():
+            for category, attributes in self.simplified_road_categories.items():
                 if attributes['types'] is None or highway_type in attributes['types']:
                     edge_data['simplified_highway_category'] = category
                     edge_data['simplified_highway_color'] = attributes['color']
                     break
             else:
                 edge_data['simplified_highway_category'] = 'other'
-                edge_data['simplified_highway_color'] = simplified_road_categories['other']['color']
+                edge_data['simplified_highway_color'] = self.simplified_road_categories['other']['color']
 
         # Count edges for each category
-        road_categories_count = {category: 0 for category in simplified_road_categories}
+        road_categories_count = {category: 0 for category in self.simplified_road_categories}
         for _, _, k, edge_data in self.graph.edges(keys=True, data=True):
             category = edge_data.get('simplified_highway_category', 'other')
             road_categories_count[category] += 1
@@ -121,13 +119,13 @@ class RoadAnalyzer:
         # Print edge count for each category
         print("\nNumber of edges based on simplified categories:")
         for category, count in road_categories_count.items():
-            types = simplified_road_categories[category]['types']
+            types = self.simplified_road_categories[category]['types']
             types_str = ', '.join(types) if types else 'All other types'
             print(f"  {category} ({types_str}): {count}")
 
     def plot_static_map(self):
         if self.graph is None:
-            raise ValueError("No graph data available. Please fetch road data first.")
+            raise ValueError("No graph data available. Please fetch road data first using the 'fetch_road_data' method.")
 
         # Assign colors to edges based on highway type
         edges_color_list = []
@@ -141,7 +139,7 @@ class RoadAnalyzer:
 
     def plot_interactive_map(self):
         if self.graph is None:
-            raise ValueError("No graph data available. Please fetch road data first.")
+            raise ValueError("No graph data available. Please fetch road data first using the 'fetch_road_data' method.")
 
         # Set Zoom level and center
         zoom = 12
