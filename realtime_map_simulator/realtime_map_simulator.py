@@ -19,9 +19,25 @@ zoom = 10
 center_lat = sum([lat for lat, lon in latlong]) / len(latlong)
 center_lon = sum([lon for lat, lon in latlong]) / len(latlong)
 
-# Create the map figure
-fig = go.Figure()
-fig.update_layout(
+# Initialize "data" attribute for plotly figure
+data1 = go.Scattermap(
+    lat=[lat for lat, lon in latlong],
+    lon=[lon for lat, lon in latlong],
+    mode='lines+markers',
+    marker=dict(size=5, color='blue'),
+    line=dict(width=2, color='blue'),
+    name='Route',
+)
+data2 = go.Scattermap(
+    lat=[latlong[0][0]],
+    lon=[latlong[0][1]],
+    mode='markers',
+    marker=dict(size=10, color='red'),
+    name='Current Position',
+)
+
+# Initialize "layout" attribute for plotly figure
+layout = go.Layout(
     title="Map during the drive",
     map=dict(
         center=dict(lat=center_lat, lon=center_lon),
@@ -39,43 +55,27 @@ fig.update_layout(
             ]
         ),
     ],
+    sliders=[
+        dict(
+            active=0,
+            currentvalue=dict(prefix='Time: ', visible=True, xanchor='right'),
+            steps=[]
+        )
+    ]
 )
 
-# Plot the waypoints
-fig.add_scattermap(
-    lat=[lat for lat, lon in latlong],
-    lon=[lon for lat, lon in latlong],
-    mode='markers+lines',
-    marker=dict(size=5, color='blue'),
-    line=dict(width=2, color='blue'),
-    name='Waypoints'
-)
-
-# Plot the slider
+# Initialize slider steps
 steps = []
 for i in range(len(latlong)):
-    steps.append(
-        dict(
-            label=str(time[i]),
-            method='update',
-            args=[
-                {
-                    'lat': [[latlong[i][0]]],
-                    'lon': [[latlong[i][1]]],
-                    'mode': 'markers+lines',
-                    'marker': {'size': 10, 'color': 'red'},
-                    'line': {'width': 4, 'color': 'red'},
-                    'name': 'Current Position'
-                }
-            ]
-        )
+    current_position = {'lat': [[latlong[i][0]]], 'lon': [[latlong[i][1]]]}
+    step = dict(
+        label=f"{time[i]}",
+        method='restyle',
+        args=[current_position, [1]] # Update the second trace
     )
-fig.update_layout(
-    sliders=[{
-        'active': 0,
-        'currentvalue': {'prefix': 'Time: ', 'visible': True, 'xanchor': 'right'},
-        'steps': steps,
-    }]
-)
+    steps.append(step)
+layout['sliders'][0]['steps'] = steps
 
+# Create the map figure
+fig = go.Figure(data=[data1, data2], layout=layout)
 fig.show()
