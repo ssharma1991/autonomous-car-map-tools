@@ -1,9 +1,14 @@
 from drive_simulator import DriveSimulator, Waypoint
 
+# waypoints = [
+#     Waypoint(37.6130184, -122.39625356),  # near SF airport
+#     Waypoint(37.4213068, -122.093090),    # near Google
+#     Waypoint(37.365739, -121.905370)      # near SJ airport
+# ]
+
 waypoints = [
-    Waypoint(37.6130184, -122.39625356),  # near SF airport
-    Waypoint(37.4213068, -122.093090),    # near Google
-    Waypoint(37.365739, -121.905370)      # near SJ airport
+    Waypoint(37.482092, -122.150314), # near Meta HQ
+    Waypoint(37.423767, -122.090094), # near Google HQ
 ]
 
 print ("\nInitializing DriveSimulator")
