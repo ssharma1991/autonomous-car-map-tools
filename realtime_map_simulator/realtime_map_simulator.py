@@ -26,8 +26,20 @@ class MapEngine:
         pass
 
     def get_map_at_latlong(self, latlong):
-        # This function is a placeholder for getting map data at a specific latitude and longitude
-        # Currently, it does not perform any operations
+        # Fetch map data from OSM
+            # Pull small area around the latlong
+
+        # Map matching
+            # Find ego_edge: the edge closest to the current position
+            # Find ego_node: nearest point on the edge to GNSS position
+            # Find distance to next node
+            # Find distance to previous node
+
+        # Calculate ego_graph
+            # Add ego_edge
+            # Add forward edges upto 500m
+            # Add backward edges upto 100m
+
         pass
 
     def plot_map(self):
