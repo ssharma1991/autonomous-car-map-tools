@@ -6,6 +6,7 @@ import networkx as nx
 
 class MapEngine:
     def __init__(self):
+        self.latlong_all = []
         self.latlong = []
         self.time = []
         self.bounding_box = None
@@ -14,15 +15,16 @@ class MapEngine:
 
     def set_gnss_data(self, path):
         # Load the data
-        gnss_data = pd.read_csv(path)
+        gnss_data_all = pd.read_csv(path)
 
         # Subsample the dataframe
-        time_delta_s  = gnss_data['timestamp_s'][1] - gnss_data['timestamp_s'][0]
-        if time_delta_s < 1:
-            freq = int(1/time_delta_s)
-            gnss_data = gnss_data.iloc[::freq].reset_index(drop=True)
+        data_reduction_factor = 10
+        map_reduction_factor = 20
+        gnss_data_all = gnss_data_all.iloc[::data_reduction_factor].reset_index(drop=True)
+        gnss_data = gnss_data_all.iloc[::map_reduction_factor].reset_index(drop=True)
 
         # Extract latitude, longitude, and time
+        self.latlong_all = gnss_data_all[['latitude_deg', 'longitude_deg']].values.tolist()
         self.latlong = gnss_data[['latitude_deg', 'longitude_deg']].values.tolist()
         self.time = (gnss_data['timestamp_s'] - gnss_data['timestamp_s'].min()).round(1).values.tolist()
 
@@ -30,10 +32,10 @@ class MapEngine:
         latitudes = [lat for lat, lon in self.latlong]
         longitudes = [lon for lat, lon in self.latlong]
         self.bounding_box = {
-            'left': min(longitudes),
-            'bottom': min(latitudes),
-            'right': max(longitudes),
-            'top': max(latitudes)
+            'left': min(longitudes)-0.01,
+            'bottom': min(latitudes)-0.01,
+            'right': max(longitudes)+0.01,
+            'top': max(latitudes)+0.01
         }
 
         # Fetch the OSM graph for the bounding box
@@ -49,15 +51,17 @@ class MapEngine:
         print(f"OSM graph fetched with {len(self.osm_graph.nodes)} nodes and {len(self.osm_graph.edges)} edges.")
 
     def calculate_realtime_map(self):
+        print("Calculating real-time map...")
         self.ego_map = []
         for latlong in self.latlong:
-            print(f"Processing GNSS position: {latlong} at index {self.latlong.index(latlong)}")
+            print(f"Progress: {round((self.latlong.index(latlong) + 1) / len(self.latlong) * 100, 2)}%")
             ego_graph = self.get_map_at_latlong(latlong)
-            self.ego_map.append(ego_graph)
+            map = self.ego_graph_to_map(ego_graph)
+            self.ego_map.append(map)
 
     def get_map_at_latlong(self, latlong):
-        FORWARD_DISTANCE_THRESHOLD = 500  # meters
-        BACKWARD_DISTANCE_THRESHOLD = 100
+        FORWARD_DISTANCE_THRESHOLD = 1000  # meters
+        BACKWARD_DISTANCE_THRESHOLD = 250
         # print("latlong:", latlong)
 
         # Map matching
@@ -162,6 +166,16 @@ class MapEngine:
         # Closest point on the line
         closest_point = A + t * AB
         return closest_point
+    
+    def ego_graph_to_map(self, ego_graph):
+        map = {'lat':[] , 'lon': []}
+        # Collect line segments
+        for u, v, key, data in ego_graph.edges(keys=True, data=True):
+            u_data = ego_graph.nodes[u]
+            v_data = ego_graph.nodes[v]
+            map['lat'].extend((u_data['y'], v_data['y'], None))
+            map['lon'].extend((u_data['x'], v_data['x'], None))
+        return map
 
 
     def plot_map(self):
@@ -172,11 +186,10 @@ class MapEngine:
 
         # Initialize "data" attribute for plotly figure
         data1 = go.Scattermap(
-            lat=[lat for lat, lon in self.latlong],
-            lon=[lon for lat, lon in self.latlong],
-            mode='lines+markers',
-            marker=dict(size=5, color='blue'),
-            line=dict(width=2, color='blue'),
+            lat=[lat for lat, lon in self.latlong_all],
+            lon=[lon for lat, lon in self.latlong_all],
+            mode='lines',
+            line=dict(width=1, color='blue'),
             name='Route',
         )
         data2 = go.Scattermap(
@@ -186,28 +199,36 @@ class MapEngine:
             marker=dict(size=10, color='red'),
             name='Current Position',
         )
+        data3 = go.Scattermap(
+            lat=[lat for lat in self.ego_map[0]['lat']],
+            lon=[lon for lon in self.ego_map[0]['lon']],
+            mode='lines+markers',
+            marker=dict(size=5, color='green'),
+            line=dict(width=2, color='green'),
+            name='Ego Map',
+        )
 
         # Initialize "layout" attribute for plotly figure
         layout = go.Layout(
             title="Map during the drive",
-            map=dict(
+            map=go.layout.Map(
                 center=dict(lat=center_lat, lon=center_lon),
                 zoom=zoom,
                 style='basic' # 'basic'/`carto-voyager`, 'open-street-map', 'satellite', 'satellite-streets'
             ),
             updatemenus=[
-                dict(
-                    type='buttons',
+                go.layout.Updatemenu(
                     buttons=[
-                        dict(label='Basic', method='relayout', args=['map.style', 'basic']),
-                        dict(label='Satellite', method='relayout', args=['map.style', 'satellite']),
-                        dict(label='Satellite Streets', method='relayout', args=['map.style', 'satellite-streets']),
-                        dict(label='Open Street Map', method='relayout', args=['map.style', 'open-street-map'])
-                    ]
+                        go.layout.updatemenu.Button(label='Basic', method='relayout', args=['map.style', 'basic']),
+                        go.layout.updatemenu.Button(label='Satellite', method='relayout', args=['map.style', 'satellite']),
+                        go.layout.updatemenu.Button(label='Satellite Streets', method='relayout', args=['map.style', 'satellite-streets']),
+                        go.layout.updatemenu.Button(label='Open Street Map', method='relayout', args=['map.style', 'open-street-map'])
+                    ],
+                    type='buttons',
                 ),
             ],
             sliders=[
-                dict(
+                go.layout.Slider(
                     active=0,
                     currentvalue=dict(prefix='Time: ', visible=True, xanchor='right'),
                     steps=[]
@@ -218,16 +239,19 @@ class MapEngine:
         # Initialize slider steps
         steps = []
         for i in range(len(self.latlong)):
-            current_position = {'lat': [[self.latlong[i][0]]], 'lon': [[self.latlong[i][1]]]}
-            step = dict(
+            current_position = {'lat': [self.latlong[i][0]], 'lon': [self.latlong[i][1]]}
+            step = go.layout.slider.Step(
                 label=f"{self.time[i]}",
                 method='restyle',
-                args=[current_position
-                      , [1]] # Update the second trace
+                args=[{'lat':[current_position['lat'],self.ego_map[i]['lat']], 
+                       'lon':[current_position['lon'],self.ego_map[i]['lon']]},
+                       [1,2]] # Update the second trace
             )
             steps.append(step)
         layout['sliders'][0]['steps'] = steps
 
         # Create the map figure
-        fig = go.Figure(data=[data1, data2], layout=layout)
+        fig = go.Figure(data=[data1, data2, data3], layout=layout)
         fig.show()
+
+        # print("Dictionary Representation of A Graph Object:\n\n" + str(fig.to_dict()))
