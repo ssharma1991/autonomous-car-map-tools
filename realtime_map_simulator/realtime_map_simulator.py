@@ -189,7 +189,8 @@ class MapEngine:
             lat=[lat for lat, lon in self.latlong_all],
             lon=[lon for lat, lon in self.latlong_all],
             mode='lines',
-            line=dict(width=1, color='blue'),
+            line=dict(width=10, color='blue'),
+            opacity=0.2,
             name='Route',
         )
         data2 = go.Scattermap(
@@ -242,10 +243,12 @@ class MapEngine:
             current_position = {'lat': [self.latlong[i][0]], 'lon': [self.latlong[i][1]]}
             step = go.layout.slider.Step(
                 label=f"{self.time[i]}",
-                method='restyle',
+                method='update',
                 args=[{'lat':[current_position['lat'],self.ego_map[i]['lat']], 
-                       'lon':[current_position['lon'],self.ego_map[i]['lon']]},
-                       [1,2]] # Update the second trace
+                       'lon':[current_position['lon'],self.ego_map[i]['lon']]}, # dict of trace attributes to update
+                        {'map.center': {'lat':self.latlong[i][0], 'lon':self.latlong[i][1]},
+                        'map.zoom': 14}, # dict of layout attributes to update
+                        [1,2]] # Traces to update (1: current position, 2: ego map)
             )
             steps.append(step)
         layout['sliders'][0]['steps'] = steps
