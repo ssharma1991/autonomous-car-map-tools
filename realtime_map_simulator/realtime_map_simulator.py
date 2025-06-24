@@ -227,6 +227,19 @@ class MapEngine:
                     ],
                     type='buttons',
                 ),
+                go.layout.Updatemenu(
+                    buttons=[
+                        go.layout.updatemenu.Button(label='Play', method='animate', args=[None, {"frame": {"duration": 1000, "redraw": True}, "fromcurrent": True}]),
+                        go.layout.updatemenu.Button(label='Pause', method='animate', args=[[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}]),
+                    ],
+                    type='buttons',
+                    direction='left',
+                    showactive=False,
+                    x=-.05,
+                    xanchor='right',
+                    y=-.08,  # Move to bottom
+                    yanchor='bottom'
+                )
             ],
             sliders=[
                 go.layout.Slider(
@@ -237,24 +250,44 @@ class MapEngine:
             ]
         )
 
+        # Initialize animation frames
+        frames = []
+        for i in range(len(self.latlong)):
+            frame = go.Frame(
+                name=str(i),
+                data=[
+                    go.Scattermap(
+                        lat=[self.latlong[i][0]],
+                        lon=[self.latlong[i][1]],
+                    ),
+                    go.Scattermap(
+                        lat=self.ego_map[i]['lat'],
+                        lon=self.ego_map[i]['lon'],
+                    )
+                ],
+                traces=[1, 2],  # Indices of traces to update
+                layout=go.Layout(
+                    map=go.layout.Map(
+                        center=dict(lat=self.latlong[i][0], lon=self.latlong[i][1]),
+                        zoom=14,
+                    )
+                )
+            )
+            frames.append(frame)
+        
         # Initialize slider steps
         steps = []
         for i in range(len(self.latlong)):
-            current_position = {'lat': [self.latlong[i][0]], 'lon': [self.latlong[i][1]]}
             step = go.layout.slider.Step(
-                label=f"{self.time[i]}",
-                method='update',
-                args=[{'lat':[current_position['lat'],self.ego_map[i]['lat']], 
-                       'lon':[current_position['lon'],self.ego_map[i]['lon']]}, # dict of trace attributes to update
-                        {'map.center': {'lat':self.latlong[i][0], 'lon':self.latlong[i][1]},
-                        'map.zoom': 14}, # dict of layout attributes to update
-                        [1,2]] # Traces to update (1: current position, 2: ego map)
+                method='animate',
+                args=[[str(i)], {"frame": {"duration": 1000, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}],
+                label=str(self.time[i])
             )
             steps.append(step)
         layout['sliders'][0]['steps'] = steps
 
         # Create the map figure
-        fig = go.Figure(data=[data1, data2, data3], layout=layout)
+        fig = go.Figure(data=[data1, data2, data3], layout=layout, frames=frames)
         fig.show()
 
         # print("Dictionary Representation of A Graph Object:\n\n" + str(fig.to_dict()))
