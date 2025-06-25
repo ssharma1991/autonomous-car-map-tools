@@ -1,4 +1,6 @@
-from road_analyzer import RoadAnalyzer, BoundingBox
+#!/usr/bin/env python3
+
+from map_analyzer import MapAnalyzer, BoundingBox
 
 # Stanford University area
 bbox = BoundingBox(
@@ -8,8 +10,8 @@ bbox = BoundingBox(
     top=37.5
 )
 
-print("\nInitializing RoadAnalyzer")
-road_analyzer = RoadAnalyzer()
+print("\nInitializing MapAnalyzer")
+road_analyzer = MapAnalyzer()
 road_analyzer.add_bounding_box(bbox)
 
 print("\nDownloading road data")
@@ -19,5 +21,5 @@ road_analyzer.fetch_road_data()
 print("\nAnalyzing road data")
 road_analyzer.show_road_stats()
 road_analyzer.simplify_road_classification()
-# road_analyzer.plot_static_map()
 road_analyzer.plot_interactive_map()
+road_analyzer.plot_static_map()

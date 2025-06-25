@@ -32,7 +32,7 @@ class BoundingBox:
     def get_top_right(self):
         return Waypoint(self.max_lat, self.max_lon)
 
-class DriveSimulator:
+class GnssSimulator:
     def __init__(self):
         self.waypoints = None
         self.bounding_box = None

@@ -19,7 +19,7 @@ class MapEngine:
 
         # Subsample the dataframe
         data_reduction_factor = 10
-        map_reduction_factor = 5
+        map_reduction_factor = 20
         gnss_data_all = gnss_data_all.iloc[::data_reduction_factor].reset_index(drop=True)
         gnss_data = gnss_data_all.iloc[::map_reduction_factor].reset_index(drop=True)
 

@@ -10,7 +10,7 @@ class BoundingBox:
         self.right = right
         self.top = top
 
-class RoadAnalyzer:
+class MapAnalyzer:
     def __init__(self):
         self.bbox = None
         self.graph = None
