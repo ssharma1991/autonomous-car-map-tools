@@ -19,7 +19,7 @@ class MapEngine:
 
         # Subsample the dataframe
         data_reduction_factor = 10
-        map_reduction_factor = 20
+        map_reduction_factor = 5
         gnss_data_all = gnss_data_all.iloc[::data_reduction_factor].reset_index(drop=True)
         gnss_data = gnss_data_all.iloc[::map_reduction_factor].reset_index(drop=True)
 
@@ -194,19 +194,19 @@ class MapEngine:
             name='Route',
         )
         data2 = go.Scattermap(
-            lat=[self.latlong[0][0]],
-            lon=[self.latlong[0][1]],
-            mode='markers',
-            marker=dict(size=10, color='red'),
-            name='Current Position',
-        )
-        data3 = go.Scattermap(
             lat=[lat for lat in self.ego_map[0]['lat']],
             lon=[lon for lon in self.ego_map[0]['lon']],
             mode='lines+markers',
             marker=dict(size=5, color='green'),
-            line=dict(width=2, color='green'),
+            line=dict(width=5, color='green'),
             name='Ego Map',
+        )
+        data3 = go.Scattermap(
+            lat=[self.latlong[0][0]],
+            lon=[self.latlong[0][1]],
+            mode='markers',
+            marker=dict(size=12, color='red'),
+            name='Current Position',
         )
 
         # Initialize "layout" attribute for plotly figure
@@ -257,12 +257,12 @@ class MapEngine:
                 name=str(i),
                 data=[
                     go.Scattermap(
-                        lat=[self.latlong[i][0]],
-                        lon=[self.latlong[i][1]],
-                    ),
-                    go.Scattermap(
                         lat=self.ego_map[i]['lat'],
                         lon=self.ego_map[i]['lon'],
+                    ),
+                    go.Scattermap(
+                        lat=[self.latlong[i][0]],
+                        lon=[self.latlong[i][1]],
                     )
                 ],
                 traces=[1, 2],  # Indices of traces to update
