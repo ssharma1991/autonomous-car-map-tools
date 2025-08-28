@@ -316,7 +316,7 @@ class GnssSimulator:
             })
             fig.add_scattermap(mode='lines+markers', lat=df['latitude'], lon=df['longitude'], marker=dict(size=8, color='green'), name='Virtual Drive', text=[f"Altitude: {alt} m" for alt in df['altitude']])
 
-        fig.show()
+        fig.show(renderer="browser")
 
     def __set_zoom_interactive_map(self):
         self.__set_zoom_static_map()

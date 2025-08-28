@@ -203,4 +203,4 @@ class MapAnalyzer:
                 line=dict(color=data['color'], width=line_width),
                 name=hwy_type
             )
-        fig.show()
+        fig.show(renderer="browser")

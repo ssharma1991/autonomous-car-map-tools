@@ -288,6 +288,6 @@ class MapEngine:
 
         # Create the map figure
         fig = go.Figure(data=[data1, data2, data3], layout=layout, frames=frames)
-        fig.show()
+        fig.show(renderer="browser")
 
         # print("Dictionary Representation of A Graph Object:\n\n" + str(fig.to_dict()))
